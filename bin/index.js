@@ -191,15 +191,125 @@ async function main() {
       fs.copyFileSync(postcssTemplatePath, postcssConfigPath);
     }
     
-    // Create tailwind.config.js if it doesn't exist and if the template exists
+    // Handle tailwind config
     const tailwindConfigTemplatePath = path.join(templatesDir, 'tailwind.config.js');
-    const tailwindConfigPath = path.join(targetPath, 'tailwind.config.js');
+    const tailwindConfigJsPath = path.join(targetPath, 'tailwind.config.js');
+    const tailwindConfigTsPath = path.join(targetPath, 'tailwind.config.ts');
     
-    if (!fs.existsSync(tailwindConfigPath) && fs.existsSync(tailwindConfigTemplatePath)) {
-      fs.copyFileSync(
-        tailwindConfigTemplatePath,
-        tailwindConfigPath
-      );
+    // Check if we need to create a tailwind config file
+    const needsTailwindConfig = () => {
+      // If either JS or TS config file already exists, we don't need to create it
+      if (fs.existsSync(tailwindConfigJsPath) || fs.existsSync(tailwindConfigTsPath)) {
+        return false;
+      }
+      
+      // If we have a template, use it
+      if (fs.existsSync(tailwindConfigTemplatePath)) {
+        return true;
+      }
+      
+      // Check if the project is using Tailwind CSS
+      const hasTailwindDep = 
+        (packageJson.dependencies && packageJson.dependencies.tailwindcss) ||
+        (packageJson.devDependencies && packageJson.devDependencies.tailwindcss);
+      
+      // Check if the prettier config references tailwind
+      const prettierConfigPath = path.join(targetPath, '.prettierrc.js');
+      let prettierUsesTailwind = false;
+      
+      if (fs.existsSync(prettierConfigPath)) {
+        try {
+          const prettierConfig = require(prettierConfigPath);
+          prettierUsesTailwind = 
+            prettierConfig.plugins?.includes('prettier-plugin-tailwindcss') ||
+            prettierConfig.tailwindConfig;
+        } catch (error) {
+          // Ignore errors reading the prettier config
+        }
+      }
+      
+      return hasTailwindDep || prettierUsesTailwind;
+    };
+    
+    if (needsTailwindConfig()) {
+      // Check if project uses TypeScript
+      const usesTypeScript = 
+        (packageJson.dependencies && packageJson.dependencies.typescript) ||
+        (packageJson.devDependencies && packageJson.devDependencies.typescript) ||
+        fs.existsSync(path.join(targetPath, 'tsconfig.json'));
+      
+      // Determine which config file to create (JS or TS)
+      const configPath = usesTypeScript ? tailwindConfigTsPath : tailwindConfigJsPath;
+      
+      // If we have a template, use it (convert to TS if needed)
+      if (fs.existsSync(tailwindConfigTemplatePath)) {
+        if (usesTypeScript) {
+          // Read the JS template and convert it to TS
+          const jsConfig = fs.readFileSync(tailwindConfigTemplatePath, 'utf8');
+          const tsConfig = jsConfig
+            .replace('module.exports =', 'import type { Config } from "tailwindcss"\n\nexport default')
+            .replace('/** @type {import(\'tailwindcss\').Config} */', '');
+          fs.writeFileSync(configPath, tsConfig);
+        } else {
+          fs.copyFileSync(tailwindConfigTemplatePath, configPath);
+        }
+      } else {
+        // Otherwise create a basic tailwind config file
+        if (usesTypeScript) {
+          // Create a TypeScript version
+          const basicTailwindConfigTS = `import type { Config } from 'tailwindcss'
+
+export default {
+  content: [
+    './src/pages/**/*.{js,ts,jsx,tsx,mdx}',
+    './src/components/**/*.{js,ts,jsx,tsx,mdx}',
+    './src/app/**/*.{js,ts,jsx,tsx,mdx}',
+    './components/**/*.{js,ts,jsx,tsx,mdx}',
+    './app/**/*.{js,ts,jsx,tsx,mdx}',
+    './pages/**/*.{js,ts,jsx,tsx,mdx}',
+  ],
+  theme: {
+    extend: {
+      colors: {
+        // Define your project color palette here
+      },
+      fontFamily: {
+        // Define your font families here
+      },
+    },
+  },
+  plugins: [],
+} satisfies Config`;
+          fs.writeFileSync(configPath, basicTailwindConfigTS);
+        } else {
+          // Create a JavaScript version
+          const basicTailwindConfigJS = `/** @type {import('tailwindcss').Config} */
+module.exports = {
+  content: [
+    './src/pages/**/*.{js,ts,jsx,tsx,mdx}',
+    './src/components/**/*.{js,ts,jsx,tsx,mdx}',
+    './src/app/**/*.{js,ts,jsx,tsx,mdx}',
+    './components/**/*.{js,ts,jsx,tsx,mdx}',
+    './app/**/*.{js,ts,jsx,tsx,mdx}',
+    './pages/**/*.{js,ts,jsx,tsx,mdx}',
+  ],
+  theme: {
+    extend: {
+      colors: {
+        // Define your project color palette here
+      },
+      fontFamily: {
+        // Define your font families here
+      },
+    },
+  },
+  plugins: [],
+};
+`;
+          fs.writeFileSync(configPath, basicTailwindConfigJS);
+        }
+      }
+      console.log(chalk.green(`✅ Created ${usesTypeScript ? 'tailwind.config.ts' : 'tailwind.config.js'}`));
     }
     
     // Copy .vscode folder if template exists
