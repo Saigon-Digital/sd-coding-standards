@@ -92,45 +92,58 @@ async function main() {
     // Copy configuration files
     const templatesDir = path.join(__dirname, '../templates');
     
-    // Copy ESLint config
-    fs.copyFileSync(
-      path.join(templatesDir, '.eslintrc.js'),
-      path.join(targetPath, '.eslintrc.js')
-    );
-    
-    // Copy Prettier config
-    fs.copyFileSync(
-      path.join(templatesDir, '.prettierrc.js'),
-      path.join(targetPath, '.prettierrc.js')
-    );
-    
-    // Copy or merge tsconfig.json
-    const targetTsConfigPath = path.join(targetPath, 'tsconfig.json');
-    if (fs.existsSync(targetTsConfigPath)) {
-      const sourceTsConfig = require(path.join(templatesDir, 'tsconfig.json'));
-      const targetTsConfig = require(targetTsConfigPath);
-      
-      // Merge compilerOptions, preserving project-specific paths
-      targetTsConfig.compilerOptions = {
-        ...sourceTsConfig.compilerOptions,
-        ...targetTsConfig.compilerOptions,
-        // Ensure strict mode is enabled
-        strict: true,
-        // Preserve project-specific paths if they exist
-        paths: targetTsConfig.compilerOptions?.paths || sourceTsConfig.compilerOptions.paths
-      };
-      
-      // Write merged config
-      fs.writeFileSync(
-        targetTsConfigPath,
-        JSON.stringify(targetTsConfig, null, 2)
-      );
+    // Copy ESLint config if template exists
+    const eslintTemplatePath = path.join(templatesDir, '.eslintrc.js');
+    const eslintTargetPath = path.join(targetPath, '.eslintrc.js');
+    if (fs.existsSync(eslintTemplatePath)) {
+      fs.copyFileSync(eslintTemplatePath, eslintTargetPath);
     } else {
-      // If no tsconfig exists, copy the template one
-      fs.copyFileSync(
-        path.join(templatesDir, 'tsconfig.json'),
-        targetTsConfigPath
-      );
+      console.warn(chalk.yellow('⚠️ ESLint config template not found. Skipping...'));
+    }
+    
+    // Copy Prettier config if template exists
+    const prettierTemplatePath = path.join(templatesDir, '.prettierrc.js');
+    const prettierTargetPath = path.join(targetPath, '.prettierrc.js');
+    if (fs.existsSync(prettierTemplatePath)) {
+      fs.copyFileSync(prettierTemplatePath, prettierTargetPath);
+    } else {
+      console.warn(chalk.yellow('⚠️ Prettier config template not found. Skipping...'));
+    }
+    
+    // Copy or merge tsconfig.json if template exists
+    const tsconfigTemplatePath = path.join(templatesDir, 'tsconfig.json');
+    const targetTsConfigPath = path.join(targetPath, 'tsconfig.json');
+    
+    if (fs.existsSync(tsconfigTemplatePath)) {
+      if (fs.existsSync(targetTsConfigPath)) {
+        try {
+          const sourceTsConfig = require(tsconfigTemplatePath);
+          const targetTsConfig = require(targetTsConfigPath);
+          
+          // Merge compilerOptions, preserving project-specific paths
+          targetTsConfig.compilerOptions = {
+            ...sourceTsConfig.compilerOptions,
+            ...targetTsConfig.compilerOptions,
+            // Ensure strict mode is enabled
+            strict: true,
+            // Preserve project-specific paths if they exist
+            paths: targetTsConfig.compilerOptions?.paths || sourceTsConfig.compilerOptions.paths
+          };
+          
+          // Write merged config
+          fs.writeFileSync(
+            targetTsConfigPath,
+            JSON.stringify(targetTsConfig, null, 2)
+          );
+        } catch (error) {
+          console.warn(chalk.yellow(`⚠️ Error merging tsconfig.json: ${error.message}`));
+        }
+      } else {
+        // If no tsconfig exists, copy the template one
+        fs.copyFileSync(tsconfigTemplatePath, targetTsConfigPath);
+      }
+    } else {
+      console.warn(chalk.yellow('⚠️ TypeScript config template not found. Skipping...'));
     }
     
     // Update package.json with scripts and configurations
@@ -170,95 +183,112 @@ async function main() {
       JSON.stringify(updatedPackageJson, null, 2)
     );
     
-    // Create postcss.config.js if it doesn't exist
+    // Create postcss.config.js if it doesn't exist and template exists
+    const postcssTemplatePath = path.join(templatesDir, 'postcss.config.js');
     const postcssConfigPath = path.join(targetPath, 'postcss.config.js');
-    if (!fs.existsSync(postcssConfigPath)) {
-      fs.copyFileSync(
-        path.join(templatesDir, 'postcss.config.js'),
-        postcssConfigPath
-      );
+    
+    if (!fs.existsSync(postcssConfigPath) && fs.existsSync(postcssTemplatePath)) {
+      fs.copyFileSync(postcssTemplatePath, postcssConfigPath);
     }
     
-    // Create tailwind.config.js if it doesn't exist
+    // Create tailwind.config.js if it doesn't exist and if the template exists
+    const tailwindConfigTemplatePath = path.join(templatesDir, 'tailwind.config.js');
     const tailwindConfigPath = path.join(targetPath, 'tailwind.config.js');
-    if (!fs.existsSync(tailwindConfigPath)) {
+    
+    if (!fs.existsSync(tailwindConfigPath) && fs.existsSync(tailwindConfigTemplatePath)) {
       fs.copyFileSync(
-        path.join(templatesDir, 'tailwind.config.js'),
+        tailwindConfigTemplatePath,
         tailwindConfigPath
       );
     }
     
-    // Copy .vscode folder if it doesn't exist or merge if it does
+    // Copy .vscode folder if template exists
+    const vscodeTemplateDir = path.join(templatesDir, '.vscode');
     const vscodePath = path.join(targetPath, '.vscode');
-    if (!fs.existsSync(vscodePath)) {
-      fs.mkdirSync(vscodePath, { recursive: true });
+    
+    if (fs.existsSync(vscodeTemplateDir)) {
+      if (!fs.existsSync(vscodePath)) {
+        fs.mkdirSync(vscodePath, { recursive: true });
+      }
+      
+      // Copy VS Code settings if template exists
+      const vscodeSettingsTemplatePath = path.join(vscodeTemplateDir, 'settings.json');
+      const vscodeSettingsPath = path.join(vscodePath, 'settings.json');
+      
+      if (fs.existsSync(vscodeSettingsTemplatePath)) {
+        if (fs.existsSync(vscodeSettingsPath)) {
+          try {
+            // Merge settings if file exists
+            const sourceSettings = require(vscodeSettingsTemplatePath);
+            const targetSettings = require(vscodeSettingsPath);
+            
+            // Merge settings, giving priority to our standardized settings
+            const mergedSettings = { ...targetSettings, ...sourceSettings };
+            
+            fs.writeFileSync(
+              vscodeSettingsPath,
+              JSON.stringify(mergedSettings, null, 2)
+            );
+          } catch (error) {
+            console.warn(chalk.yellow(`⚠️ Error merging VS Code settings: ${error.message}`));
+          }
+        } else {
+          // Copy if file doesn't exist
+          fs.copyFileSync(vscodeSettingsTemplatePath, vscodeSettingsPath);
+        }
+      }
     }
     
-    // Copy VS Code settings
-    const vscodeSettingsPath = path.join(vscodePath, 'settings.json');
-    if (fs.existsSync(vscodeSettingsPath)) {
-      // Merge settings if file exists
-      const sourceSettings = require(path.join(templatesDir, '.vscode', 'settings.json'));
-      const targetSettings = require(vscodeSettingsPath);
-      
-      // Merge settings, giving priority to our standardized settings
-      const mergedSettings = { ...targetSettings, ...sourceSettings };
-      
-      fs.writeFileSync(
-        vscodeSettingsPath,
-        JSON.stringify(mergedSettings, null, 2)
-      );
-    } else {
-      // Copy if file doesn't exist
-      fs.copyFileSync(
-        path.join(templatesDir, '.vscode', 'settings.json'),
-        vscodeSettingsPath
-      );
-    }
-    
-    // Copy VS Code extensions recommendations
+    // Copy VS Code extensions recommendations if template exists
+    const vscodeExtensionsTemplatePath = path.join(templatesDir, '.vscode', 'extensions.json');
     const vscodeExtensionsPath = path.join(vscodePath, 'extensions.json');
-    if (fs.existsSync(vscodeExtensionsPath)) {
-      // Merge extensions if file exists
-      const sourceExtensions = require(path.join(templatesDir, '.vscode', 'extensions.json'));
-      const targetExtensions = require(vscodeExtensionsPath);
-      
-      // Combine recommendations without duplicates
-      const allRecommendations = [
-        ...new Set([
-          ...(targetExtensions.recommendations || []),
-          ...(sourceExtensions.recommendations || [])
-        ])
-      ];
-      
-      fs.writeFileSync(
-        vscodeExtensionsPath,
-        JSON.stringify({ recommendations: allRecommendations }, null, 2)
-      );
-    } else {
-      // Copy if file doesn't exist
-      fs.copyFileSync(
-        path.join(templatesDir, '.vscode', 'extensions.json'),
-        vscodeExtensionsPath
-      );
+    
+    if (fs.existsSync(vscodeExtensionsTemplatePath)) {
+      if (fs.existsSync(vscodeExtensionsPath)) {
+        try {
+          // Merge extensions if file exists
+          const sourceExtensions = require(vscodeExtensionsTemplatePath);
+          const targetExtensions = require(vscodeExtensionsPath);
+          
+          // Combine recommendations without duplicates
+          const allRecommendations = [
+            ...new Set([
+              ...(targetExtensions.recommendations || []),
+              ...(sourceExtensions.recommendations || [])
+            ])
+          ];
+          
+          fs.writeFileSync(
+            vscodeExtensionsPath,
+            JSON.stringify({ recommendations: allRecommendations }, null, 2)
+          );
+        } catch (error) {
+          console.warn(chalk.yellow(`⚠️ Error merging VS Code extensions: ${error.message}`));
+        }
+      } else {
+        // Copy if file doesn't exist
+        fs.copyFileSync(vscodeExtensionsTemplatePath, vscodeExtensionsPath);
+      }
     }
     
-    // Copy GitHub CI workflow
-    const githubWorkflowsPath = path.join(targetPath, '.github', 'workflows');
-    if (!fs.existsSync(githubWorkflowsPath)) {
-      fs.mkdirSync(githubWorkflowsPath, { recursive: true });
-    }
+    // Copy GitHub CI workflow if template exists
+    const githubWorkflowsTemplatePath = path.join(templatesDir, '.github', 'workflows');
+    const ciWorkflowTemplatePath = path.join(githubWorkflowsTemplatePath, 'ci.yml');
     
-    // Copy CI workflow file
-    const ciWorkflowPath = path.join(githubWorkflowsPath, 'ci.yml');
-    if (!fs.existsSync(ciWorkflowPath)) {
-      fs.copyFileSync(
-        path.join(templatesDir, '.github', 'workflows', 'ci.yml'),
-        ciWorkflowPath
-      );
-    } else {
-      console.log(chalk.yellow('⚠️ CI workflow file already exists. Skipping...'));
-      console.log(chalk.yellow('   You may want to manually merge the CI workflow file.'));
+    if (fs.existsSync(ciWorkflowTemplatePath)) {
+      const githubWorkflowsPath = path.join(targetPath, '.github', 'workflows');
+      if (!fs.existsSync(githubWorkflowsPath)) {
+        fs.mkdirSync(githubWorkflowsPath, { recursive: true });
+      }
+      
+      // Copy CI workflow file
+      const ciWorkflowPath = path.join(githubWorkflowsPath, 'ci.yml');
+      if (!fs.existsSync(ciWorkflowPath)) {
+        fs.copyFileSync(ciWorkflowTemplatePath, ciWorkflowPath);
+      } else {
+        console.log(chalk.yellow('⚠️ CI workflow file already exists. Skipping...'));
+        console.log(chalk.yellow('   You may want to manually merge the CI workflow file.'));
+      }
     }
     
     spinner.succeed('Configuration files applied successfully');
