@@ -16,7 +16,7 @@ A command-line tool to quickly apply Saigon Digital's coding standards to any Ne
 ### Global Installation
 
 ```bash
-npm install -g sd-coding-standards
+npm i -g https://github.com/Saigon-Digital/sd-coding-standards.git
 ```
 
 ### Using npx (without installation)
