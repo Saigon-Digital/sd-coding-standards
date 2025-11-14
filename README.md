@@ -1,15 +1,12 @@
-# Saigon Digital Coding Standards CLI
+# Saigon Digital Configuration Updater
 
-A command-line tool to quickly apply Saigon Digital's coding standards to any Next.js project.
+A lightweight CLI tool to update essential configuration files in your project.
 
 ## Features
 
-- Applies standardized ESLint configuration
-- Applies standardized Prettier configuration
-- Applies standardized TypeScript configuration
-- Sets up Git hooks for linting and type checking
-- Installs required dependencies
-- Works with any Next.js project, regardless of the template used (Prismic, Sanity, etc.)
+- Updates ESLint configuration (`.eslintrc.js`)
+- Updates PostCSS configuration (`postcss.config.js`)
+- Updates Tailwind CSS configuration (`tailwind.config.js`)
 
 ## Installation
 
@@ -27,7 +24,7 @@ npx sd-coding-standards
 
 ## Usage
 
-Navigate to your Next.js project directory and run:
+Navigate to your project directory and run:
 
 ```bash
 sd-standards
@@ -36,49 +33,34 @@ sd-standards
 Or specify a project path:
 
 ```bash
-sd-standards --path /path/to/your/nextjs/project
+sd-standards --path /path/to/your/project
 ```
 
 ### Options
 
 - `-y, --yes`: Skip confirmation prompts
-- `-p, --path <path>`: Path to Next.js project (defaults to current directory)
-- `--skip-deps`: Skip installing dependencies
-- `--skip-git-hooks`: Skip setting up git hooks
+- `-p, --path <path>`: Path to project (defaults to current directory)
 - `-V, --version`: Output the version number
 - `-h, --help`: Display help for command
 
-## What Gets Applied
+## What Gets Updated
 
-1. **ESLint Configuration** (.eslintrc.js)
+1. **ESLint Configuration** (`.eslintrc.js`)
    - React best practices
    - TypeScript rules
    - Import ordering
    - Accessibility (jsx-a11y)
    - Tailwind CSS rules
 
-2. **Prettier Configuration** (.prettierrc.js)
-   - Consistent code formatting
-   - Tailwind CSS class sorting
+2. **PostCSS Configuration** (`postcss.config.js`)
+   - Standard PostCSS setup
 
-3. **TypeScript Configuration** (tsconfig.json)
-   - Strict type checking
-   - Next.js optimized settings
-
-4. **Git Hooks**
-   - Pre-commit: Lint and format staged files
-   - Pre-push: Type checking
-
-5. **Package.json Scripts**
-   - `lint`: Run ESLint
-   - `lint:fix`: Run ESLint with auto-fix
-   - `format`: Run Prettier
-   - `type-check`: Run TypeScript type checking
+3. **Tailwind CSS Configuration** (`tailwind.config.js`)
+   - Basic Tailwind CSS setup
 
 ## Requirements
 
 - Node.js 14 or higher
-- A Next.js project
 
 ## License
 
