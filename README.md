@@ -13,7 +13,7 @@ A lightweight CLI tool to update essential configuration files in your project.
 ### Global Installation
 
 ```bash
-npm install -g sd-coding-standards
+npm i -g https://github.com/Saigon-Digital/sd-coding-standards.git
 ```
 
 ### Using npx (without installation)
